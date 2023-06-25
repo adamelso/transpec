@@ -5,21 +5,21 @@ namespace Transpec\Visitor;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
-use Transpec\PhpUnitTestClassBuilder;
+use Transpec\Transcriber\ClassTranscriber;
 
 class ClassVisitor extends NodeVisitorAbstract
 {
-    private PhpUnitTestClassBuilder $builder;
+    private ClassTranscriber $transcriber;
 
-    public function __construct(PhpUnitTestClassBuilder $builder)
+    public function __construct(ClassTranscriber $transcriber)
     {
-        $this->builder = $builder;
+        $this->transcriber = $transcriber;
     }
 
     public function enterNode(Node $node): ?Node
     {
         if ($node instanceof Node\Stmt\Class_) {
-            return $this->builder->convertTestClass($node);
+            return $this->transcriber->convert($node);
         }
 
         return null;

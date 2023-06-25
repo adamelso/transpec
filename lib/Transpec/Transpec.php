@@ -27,14 +27,13 @@ class Transpec
         $ast = static::parse($specfile);
 
         $traverser = new NodeTraverser();
-        $builder = new PhpUnitTestClassBuilder(new BuilderFactory());
+        $factory = new BuilderFactory();
 
         $visitors = [];
 
-        $visitors[] = new Visitor\PhpSpecVisitor($builder);
-        $visitors[] = new Visitor\NamespaceVisitor($builder);
-        $visitors[] = new Visitor\ClassVisitor($builder);
-        $visitors[] = new Visitor\MethodVisitor($builder);
+        $visitors[] = new Visitor\NamespaceVisitor(new Transcriber\NamespaceTranscriber($factory));
+        $visitors[] = new Visitor\ClassVisitor(new Transcriber\ClassTranscriber($factory));
+        $visitors[] = new Visitor\MethodVisitor(new Transcriber\TestScenarioTranscriber($factory, new Transcriber\InitializableSubjectTestTranscriber($factory)));
 
         foreach ($visitors as $v) {
             $traverser->addVisitor($v);

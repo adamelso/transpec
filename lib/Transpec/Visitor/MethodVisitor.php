@@ -4,31 +4,27 @@ namespace Transpec\Visitor;
 
 use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
-use Transpec\PhpUnitTestClassBuilder;
+use Transpec\Transcriber\TestScenarioTranscriber;
 
 class MethodVisitor extends NodeVisitorAbstract
 {
-    private PhpUnitTestClassBuilder $builder;
+    private TestScenarioTranscriber $transcriber;
 
-    public function __construct(PhpUnitTestClassBuilder $builder)
+    public function __construct(TestScenarioTranscriber $transcriber)
     {
-        $this->builder = $builder;
+        $this->transcriber = $transcriber;
     }
 
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): ?Node
     {
-        if ($node instanceof Node\Stmt\ClassMethod) {
-            if ('it_is_initializable' === $node->name->name) {
-                return $this->builder->convertTestForInitializingSubject($node);
-            }
-
-            if (!str_starts_with($node->name->name, 'it_')) {
-                return null;
-            }
-
-            return $this->builder->convertTestScenario($node);
+        if (!$node instanceof Node\Stmt\ClassMethod) {
+            return null;
         }
 
-        return null;
+        if (!str_starts_with($node->name->name, 'it_')) {
+            return null;
+        }
+
+        return $this->transcriber->convert($node);
     }
 }
