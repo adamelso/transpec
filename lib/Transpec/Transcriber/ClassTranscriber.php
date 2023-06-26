@@ -40,17 +40,21 @@ class ClassTranscriber implements Transcriber
             ->setType($testName);
 
         $cisSetUp = $this->findExistingSetupMethod($cisNode);
-        // @todo Inject.
-        $collaborators = (new CollaboratorExtractor)->extract($cisSetUp);
 
-        $setUp = $this->rewriteSetup($cisSetUp, $testName);
+        $collaborators = [];
+
+        if ($cisSetUp) {
+            $collaborators = CollaboratorExtractor::extract($cisSetUp);
+        }
+
+        $transSetUp = $this->rewriteSetup($cisSetUp, $testName);
 
         $declaration = $this->builderFactory
             ->class($testClassname)
             ->extend('\\'.\PHPUnit\Framework\TestCase::class)
             ->addStmt($useProphecyTrait)
             ->addStmt($testSubjectProperty)
-            ->addStmt($setUp)
+            ->addStmt($transSetUp)
         ;
 
         foreach ($collaborators as $collaboratorVar => $collaboratorType) {

@@ -11,7 +11,7 @@ class CollaboratorExtractor
      *
      * @return array<string, string> $variableName => Class::name
      */
-    public function extract(Node\Stmt\ClassMethod $method): array
+    public static function extract(Node\Stmt\ClassMethod $method): array
     {
         $collaborators = [];
 

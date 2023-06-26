@@ -23,7 +23,7 @@ jobs:
     # uses: shivammathur/setup-php@v2
     - uses: shivammathur/setup-php@2cb9b829437ee246e9b3cac53555a39208ca6d28
       with:
-        php-version: '8.0'
+        php-version: '7.4'
     - uses: actions/checkout@v3
     - name: Copy .env.test.local
       run: php -r "file_exists('.env.test.local') || copy('.env.test', '.env.test.local');"
@@ -40,6 +40,8 @@ jobs:
     - name: Execute canon unit tests via PhpSpec
       run: vendor/bin/phpspec run --format=pretty
     - name: Convert unit tests from PhpSpec to PHPUnit
-      run: bin/console transpec:convert spec/Transpec/Visitor/ClassVisitorSpec.php 
+      run: |
+        bin/console transpec:convert spec/Transpec/Descriptor/ScenarioDescriptorSpec.php && \
+        bin/console transpec:convert spec/Transpec/Visitor/ClassVisitorSpec.php
     - name: Execute convertered unit tests via PHPUnit
       run: vendor/bin/phpunit
