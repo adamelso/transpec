@@ -4,7 +4,6 @@ namespace Transpec\Transcriber;
 
 use PhpParser\BuilderFactory;
 use PhpParser\BuilderHelpers;
-use PhpParser\NodeAbstract;
 use PhpParser\Node;
 use Transpec\Descriptor\ScenarioDescriptor;
 use Transpec\Transcriber;
@@ -18,7 +17,7 @@ class InitializableSubjectTestTranscriber implements Transcriber
         $this->builderFactory = $builderFactory;
     }
 
-    public function convert(NodeAbstract $cisNode): NodeAbstract
+    public function convert(Node $cisNode): Node
     {
         if (! $cisNode instanceof Node\Stmt\ClassMethod) {
             throw new \DomainException('This transcriber can only convert class method declarations.');
@@ -50,7 +49,7 @@ class InitializableSubjectTestTranscriber implements Transcriber
             }
 
             $classConstFetch = $stmt->expr->args[0]->value;
-            $subjectFetch = new Node\Expr\PropertyFetch(new Node\Expr\Variable('this'), 'subject');
+            $subjectFetch = new Node\Expr\PropertyFetch(new Node\Expr\Variable('this'), '_subject');
 
             // static::assertInstanceOf( Foo::class, $this->subject )
             $stmt->expr = $this->builderFactory->staticCall('static', 'assertInstanceOf', [

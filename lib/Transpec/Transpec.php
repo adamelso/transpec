@@ -6,6 +6,8 @@ use PhpParser\BuilderFactory;
 use PhpParser\Error;
 use PhpParser\ParserFactory;
 use PhpParser\NodeTraverser;
+use Transpec\Extractor\CollaboratorExtractor;
+use Transpec\Transcriber\CollaboratorTranscriber;
 use Transpec\Visitor;
 
 class Transpec
@@ -31,9 +33,22 @@ class Transpec
 
         $visitors = [];
 
-        $visitors[] = new Visitor\NamespaceVisitor(new Transcriber\NamespaceTranscriber($factory));
-        $visitors[] = new Visitor\ClassVisitor(new Transcriber\ClassTranscriber($factory));
-        $visitors[] = new Visitor\MethodVisitor(new Transcriber\TestScenarioTranscriber($factory, new Transcriber\InitializableSubjectTestTranscriber($factory)));
+        $visitors[] = new Visitor\NamespaceVisitor(
+            new Transcriber\NamespaceTranscriber($factory)
+        );
+
+        $collaboratorTranscriber = new Transcriber\CollaboratorTranscriber($factory, new CollaboratorExtractor());
+
+        $visitors[] = new Visitor\ClassVisitor(
+            new Transcriber\ClassTranscriber($factory, $collaboratorTranscriber)
+        );
+
+        $methodTranscribers = [
+            new Transcriber\ScenarioTranscriber($factory, $collaboratorTranscriber),
+            new Transcriber\InitializableSubjectTestTranscriber($factory),
+            new Transcriber\SetupTranscriber($factory),
+        ];
+        $visitors[] = new Visitor\MethodVisitor(...$methodTranscribers);
 
         foreach ($visitors as $v) {
             $traverser->addVisitor($v);

@@ -2,9 +2,9 @@
 
 namespace Transpec;
 
-use PhpParser\NodeAbstract;
+use PhpParser\Node;
 
 interface Transcriber
 {
-    public function convert(NodeAbstract $cisNode): NodeAbstract;
+    public function convert(Node $cisNode): Node;
 }
