@@ -12,10 +12,10 @@ class ScenarioDescriptorSpec extends ObjectBehavior
         $this->shouldHaveType(ScenarioDescriptor::class);
     }
 
-    function it_converts_test_scenario_descriptions_from_PhpSpec_to_PHPUnit_method_name_formats()
+    function it_converts_test_scenario_descriptions_from_PhpSpec_snake_case_to_PHPUnit_camelCase_method_names()
     {
-        $this->convert('it_converts_test_scenario_descriptions_from_PhpSpec_to_PHPUnit_method_name_formats')
-            ->shouldReturn('testConvertsTestScenarioDescriptionsFromPhpSpecToPHPUnitMethodNameFormats');
+        $this->convert('it_converts_test_scenario_descriptions_from_PhpSpec_snake_case_to_PHPUnit_camelCase_method_names')
+            ->shouldReturn('testConvertsTestScenarioDescriptionsFromPhpspecSnakeCaseToPhpunitCamelcaseMethodNames');
     }
 
     function it_ignores_method_names_not_starting_with_the_expected_PhpSpec_prefix()

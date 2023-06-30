@@ -13,7 +13,7 @@ class ScenarioDescriptor
         }
 
         foreach ($words as &$w) {
-            $w = ucfirst($w);
+            $w = ucfirst(strtolower($w));
         }
 
         $words[0] = 'test';

@@ -38,9 +38,9 @@ jobs:
     - name: Install Dependencies
       run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
     - name: Execute canon unit tests via PhpSpec
-      run: bin/phpspec run --format=pretty
+      run: bin/phpspec run --format=pretty --verbose --no-interaction
     - name: Convert unit tests from PhpSpec to PHPUnit
       run: |
         bin/console transpec:convert spec
     - name: Execute converted unit tests via PHPUnit
-      run: bin/phpunit
+      run: bin/phpunit --testdox
