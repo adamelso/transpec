@@ -8,17 +8,20 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Filesystem\Filesystem;
+use Transpec\Locator;
 use Transpec\Transpec;
 use PhpParser\PrettyPrinter;
 
 class TranspecConvertCommand extends Command
 {
+    private const LOCATION = 'location';
+
     protected static $defaultName = 'transpec:convert';
 
     protected function configure(): void
     {
         $this
-            ->addArgument('test-class-file', InputArgument::REQUIRED, 'Path to the test class file to convert. Only PhpSpec to PHPUnit is currently supported with partial results.')
+            ->addArgument(self::LOCATION, InputArgument::REQUIRED, 'Path to the test class file to convert. Only PhpSpec to PHPUnit is currently supported with partial results.')
         ;
     }
 
@@ -26,38 +29,43 @@ class TranspecConvertCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        $testClassFile = $input->getArgument('test-class-file');
-        $stmts = Transpec::run($testClassFile);
-
-        $prettyPrinter = new PrettyPrinter\Standard();
-        $php = $prettyPrinter->prettyPrintFile($stmts);
-
-        $f = new \SplFileInfo($testClassFile);
-        $locationDir = $f->getPath();
-        $newDir = [];
-        foreach (explode('/', $locationDir) as $dir) {
-            if ('spec' === $dir) {
-                $newDir[] = 'tests';
-                $newDir[] = 'unit';
-
-                continue;
-            }
-
-            $newDir[] = $dir;
-        }
-
-        $length = strlen($f->getFilename());
-
-        $name = substr($f->getFilename(), 0, $length - 8);
-
-        $newDir[] = $name.'Test.php';
-        $newSaveLocation = implode('/', $newDir);
+        $testClassLocation = $input->getArgument(self::LOCATION);
 
         $fs = new Filesystem();
+        $prettyPrinter = new PrettyPrinter\Standard();
 
-        $fs->dumpFile($newSaveLocation, $php);
+        foreach (Locator::fetch($testClassLocation) as $testFile) {
+            $io->writeln("Converting <info>{$testFile->getFilename()}</info>");
 
-        $io->success("Converted to {$newSaveLocation}");
+            $stmts = Transpec::convert($testFile);
+            $php = $prettyPrinter->prettyPrintFile($stmts);
+
+            $f = $testFile->getFileInfo();
+            $locationDir = $f->getPath();
+            $newDir = [];
+
+            foreach (explode('/', $locationDir) as $dir) {
+                if ('spec' === $dir) {
+                    $newDir[] = 'tests';
+                    $newDir[] = 'unit';
+
+                    continue;
+                }
+
+                $newDir[] = $dir;
+            }
+
+            $length = strlen($f->getFilename());
+            $name = substr($f->getFilename(), 0, $length - 8);
+
+            $newDir[] = $name.'Test.php';
+            $newSaveLocation = implode('/', $newDir);
+
+            $fs->dumpFile($newSaveLocation, $php);
+
+            $io->writeln("Writing <info>{$newSaveLocation}</info>.");
+            $io->writeln('');
+        }
 
         return Command::SUCCESS;
     }

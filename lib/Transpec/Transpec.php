@@ -6,27 +6,25 @@ use PhpParser\BuilderFactory;
 use PhpParser\Error;
 use PhpParser\ParserFactory;
 use PhpParser\NodeTraverser;
+use Symfony\Component\Finder\SplFileInfo;
 use Transpec\Extractor\CollaboratorExtractor;
-use Transpec\Transcriber\CollaboratorTranscriber;
 use Transpec\Visitor;
 
 class Transpec
 {
-    public static function parse(string $specfile)
+    public static function parse(SplFileInfo $file)
     {
-        $code = @file_get_contents($specfile);
-
         $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
         try {
-            return $parser->parse($code);
+            return $parser->parse($file->getContents());
         } catch (Error $error) {
             throw new \RuntimeException("Parse error: {$error->getMessage()}\n", 0, $error);
         }
     }
 
-    public static function run(string $specfile)
+    public static function convert(SplFileInfo $file)
     {
-        $ast = static::parse($specfile);
+        $ast = static::parse($file);
 
         $traverser = new NodeTraverser();
         $factory = new BuilderFactory();

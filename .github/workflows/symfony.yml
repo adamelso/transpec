@@ -41,7 +41,6 @@ jobs:
       run: bin/phpspec run --format=pretty
     - name: Convert unit tests from PhpSpec to PHPUnit
       run: |
-        bin/console transpec:convert spec/Transpec/Descriptor/ScenarioDescriptorSpec.php && \
-        bin/console transpec:convert spec/Transpec/Visitor/ClassVisitorSpec.php
-    - name: Execute convertered unit tests via PHPUnit
+        bin/console transpec:convert spec
+    - name: Execute converted unit tests via PHPUnit
       run: bin/phpunit

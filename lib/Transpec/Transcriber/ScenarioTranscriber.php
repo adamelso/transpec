@@ -58,6 +58,7 @@ class ScenarioTranscriber implements Transcriber
             switch ($rightCall->name->name) {
                 case 'shouldReturn':
                 case 'shouldBe':
+                case 'shouldBeLike':
                     [$n] = $this->rewriteAssertion($rightCall, $leftFetch);
                     $stmt->expr = $n;
                     $newStatements[] = $stmt;
@@ -98,7 +99,7 @@ class ScenarioTranscriber implements Transcriber
         [$expected] = $assertionCall->args;
         $revealExpectedValue = null;
 
-        if ($expected->value instanceof Node\Expr\Variable) {
+        if ('shouldBeLike' !== $assertionCall->name->name && $expected->value instanceof Node\Expr\Variable) {
             $revealExpectedValue = $this->buildRevealCallOnCollaborator($expected->value);
         }
 

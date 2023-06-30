@@ -22,29 +22,33 @@ or if you have ideas on what this tool should look like please create an issue.
 Usage
 ---
 
-Running...
+Convert a single Spec file create a new PHPUnit test class at `../my-project/tests/unit/Foo/Bar/ServiceTest.php`.
 
 ```
 bin/console transpec:convert ../my-project/spec/Foo/Bar/ServiceSpec.php
 ```
 
-...will create a new PHPUnit test class at `../my-project/tests/unit/Foo/Bar/ServiceTest.php`.
+You can also convert all Spec files in a given directory, writing them to `../my-project/tests/unit`.
+
+```
+bin/console transpec:convert ../my-project/spec
+```
+
 
 Development Roadmap
 ---
 
-* Add unit and functional tests: ironically there are none written yet
-  (I wasn't sure if this tool was feasible to build).
+* Add more unit and functional tests, as the behaviour is solidified with new services created.
+
+* Experiment with more real world examples.
+
+* Allow customising the target namespace and directory.
+
+* Update or create target phpunit.xml if necessary.
 
 * Implement PhpSpec to PHPUnit conversion first: this is the easiest to do
   due to the opinionated nature of PhpSpec, meaning the results of a conversion
   will be more predictable.
-
-  - Implement conversion from `$this->shouldThrow()` to `$this->setExpectedException()`.
-
-  - Ensure collaborators are instantiated.
-
-  - Split `PhpUnitTestClassBuilder` into separate builders.
 
   - Implement AST visitor matching and conversion for the following PhpSpec methods:
 
