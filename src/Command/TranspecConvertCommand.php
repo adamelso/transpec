@@ -33,11 +33,12 @@ class TranspecConvertCommand extends Command
 
         $fs = new Filesystem();
         $prettyPrinter = new PrettyPrinter\Standard();
+        $transpec = Transpec::initialize();
 
         foreach (Locator::fetch($testClassLocation) as $testFile) {
             $io->writeln("Converting <info>{$testFile->getFilename()}</info>");
 
-            $stmts = Transpec::convert($testFile);
+            $stmts = $transpec->convert($testFile);
             $php = $prettyPrinter->prettyPrintFile($stmts);
 
             $f = $testFile->getFileInfo();

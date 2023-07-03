@@ -1,14 +1,14 @@
 <?php
 
-namespace Transpec\Transcriber;
+namespace Transpec\Replicator;
 
 use PhpParser\Builder;
 use PhpParser\BuilderFactory;
 use PhpParser\Node;
 use Transpec\Extractor\CollaboratorExtractor;
-use Transpec\Transcriber;
+use Transpec\Replicator;
 
-class CollaboratorTranscriber implements Transcriber
+class CollaboratorReplicator implements Replicator
 {
     private BuilderFactory $builderFactory;
     private CollaboratorExtractor $collaboratorExtractor;
@@ -24,7 +24,7 @@ class CollaboratorTranscriber implements Transcriber
         $this->collaboratorExtractor = $collaboratorExtractor;
     }
 
-    public function convert(Node $cisNode, Builder $transNodeBuilder = null): Node
+    public function convert(Node $cisNode, Builder $transNodeBuilder): void
     {
         if (! $cisNode instanceof Node\Stmt\ClassMethod) {
             throw new \LogicException('A class method is excepted in order to process test subject collaborators.');
@@ -43,10 +43,6 @@ class CollaboratorTranscriber implements Transcriber
         foreach ($collaboratorStatements as $c) {
             $transNodeBuilder->addStmt($c);
         }
-
-        // @todo Hack until API has changed.
-        $tmp = clone $transNodeBuilder;
-        return $tmp->getNode();
     }
 
     private function createCollaboratorStatements(array $collaborators, bool $isLocal = true): array

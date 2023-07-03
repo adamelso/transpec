@@ -4,19 +4,22 @@ namespace Transpec\Transcriber;
 
 use PhpParser\BuilderFactory;
 use Transpec\Descriptor\ScenarioDescriptor;
-use Transpec\Extractor\CollaboratorExtractor;
+use Transpec\Replicator\CollaboratorReplicator;
+use Transpec\Transcoder\AssertionTranscoder;
 use Transpec\Transcriber;
 use PhpParser\Node;
 
 class ScenarioTranscriber implements Transcriber
 {
     private BuilderFactory $builderFactory;
-    private CollaboratorTranscriber $collaboratorTranscriber;
+    private CollaboratorReplicator $collaboratorReplicator;
+    private AssertionTranscoder $assertionTranscoder;
 
-    public function __construct(BuilderFactory $builderFactory, CollaboratorTranscriber $collaboratorTranscriber)
+    public function __construct(BuilderFactory $builderFactory, CollaboratorReplicator $collaboratorReplicator, AssertionTranscoder $assertionTranscoder)
     {
         $this->builderFactory = $builderFactory;
-        $this->collaboratorTranscriber = $collaboratorTranscriber;
+        $this->collaboratorReplicator = $collaboratorReplicator;
+        $this->assertionTranscoder = $assertionTranscoder;
     }
 
     public function convert(Node $cisNode): Node
@@ -35,8 +38,8 @@ class ScenarioTranscriber implements Transcriber
             ->makePublic()
             ->setReturnType('void')
         ;
-        // @todo Inject
-        $this->collaboratorTranscriber->convert($cisNode, $transNodeBuilder);
+
+        $this->collaboratorReplicator->convert($cisNode, $transNodeBuilder);
 
         $newStatements = [];
 
@@ -59,7 +62,7 @@ class ScenarioTranscriber implements Transcriber
                 case 'shouldReturn':
                 case 'shouldBe':
                 case 'shouldBeLike':
-                    [$n] = $this->rewriteAssertion($rightCall, $leftFetch);
+                    [$n] = $this->assertionTranscoder->rewrite($rightCall, $leftFetch);
                     $stmt->expr = $n;
                     $newStatements[] = $stmt;
 
@@ -92,34 +95,6 @@ class ScenarioTranscriber implements Transcriber
         }
 
         return $transNodeBuilder->getNode();
-    }
-
-    private function rewriteAssertion(Node\Expr\MethodCall $assertionCall, Node\Expr\MethodCall $subjectCall): array
-    {
-        [$expected] = $assertionCall->args;
-        $revealExpectedValue = null;
-
-        if ('shouldBeLike' !== $assertionCall->name->name && $expected->value instanceof Node\Expr\Variable) {
-            $revealExpectedValue = $this->buildRevealCallOnCollaborator($expected->value);
-        }
-
-        $argValue = $revealExpectedValue ?: $expected->value;
-
-        $subjectCall->var = new Node\Expr\PropertyFetch(new Node\Expr\Variable('this'), '_subject');
-
-        foreach ($subjectCall->args as $i => $a) {
-            $var = $subjectCall->args[$i]->value;
-            if ($var instanceof Node\Expr\Variable) {
-                $subjectCall->args[$i]->value = $this->buildRevealCallOnCollaborator($var);
-            }
-        }
-
-        return [
-            $this->builderFactory->staticCall('static', 'assertEquals', [
-                $argValue,
-                $subjectCall
-            ])
-        ];
     }
 
     private function rewriteExceptionAssertion(Node\Expr\MethodCall $assertionCall, Node\Expr\MethodCall $subjectCall): array

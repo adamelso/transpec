@@ -5,17 +5,22 @@ namespace Transpec\Transcriber;
 use PhpParser\BuilderFactory;
 use PhpParser\Node;
 use Transpec\Extractor\CollaboratorExtractor;
+use Transpec\Extractor\TestNameExtractor;
+use Transpec\Factory\SetUpMethodFactory;
+use Transpec\Replicator\CollaboratorReplicator;
 use Transpec\Transcriber;
 
 class ClassTranscriber implements Transcriber
 {
     private BuilderFactory $builderFactory;
-    private CollaboratorTranscriber $collaboratorTranscriber;
+    private CollaboratorReplicator $collaboratorReplicator;
+    private SetUpMethodFactory $setUpMethodFactory;
 
-    public function __construct(BuilderFactory $builderFactory, CollaboratorTranscriber $collaboratorTranscriber)
+    public function __construct(BuilderFactory $builderFactory, CollaboratorReplicator $collaboratorReplicator, SetUpMethodFactory $setUpMethodFactory)
     {
         $this->builderFactory = $builderFactory;
-        $this->collaboratorTranscriber = $collaboratorTranscriber;
+        $this->collaboratorReplicator = $collaboratorReplicator;
+        $this->setUpMethodFactory = $setUpMethodFactory;
     }
 
     public function convert(Node $cisNode): Node
@@ -29,7 +34,7 @@ class ClassTranscriber implements Transcriber
 
     public function convertTestClass(Node\Stmt\Class_ $cisNode): Node\Stmt\Class_
     {
-        $testName = $this->extractTestName($cisNode->name);
+        $testName = TestNameExtractor::extract($cisNode->name);
         $testClassname = $testName.'Test';
 
         $useProphecyTrait = $this->builderFactory->useTrait('\\' . \Prophecy\PhpUnit\ProphecyTrait::class);
@@ -79,23 +84,6 @@ EOT
         return $transNode;
     }
 
-    public function extractTestName(string $phpSpecFqcn): string
-    {
-        $ns = explode('\\', $phpSpecFqcn);
-        $specName = array_pop($ns);
-
-        $length = strlen($specName);
-
-        $name = substr($specName, 0, $length - 4);
-        $specSuffix = substr($specName, -4);
-
-        if ('Spec' !== $specSuffix) {
-            throw new \UnexpectedValueException("PhpSpec classname '{$specName}' is invalid.");
-        }
-
-        return $name;
-    }
-
     private function findExistingSetupMethod(Node\Stmt\Class_ $cisNode): ?Node\Stmt\ClassMethod
     {
         foreach ($cisNode->stmts as $statement) {
@@ -107,22 +95,18 @@ EOT
                 return $statement;
             }
         }
+
         return null;
     }
 
     private function rewriteSetup(?Node\Stmt\ClassMethod $cisSetUp, string $testClassname)
     {
-        $transSetUp = $this->builderFactory
-            ->method('setUp')
-            ->makeProtected()
-            ->setReturnType('void')
-        ;
+        $transSetUp = $this->setUpMethodFactory->build();
 
         $args = [];
 
         if ($cisSetUp) {
-            // @todo Inject
-            $this->collaboratorTranscriber->convert($cisSetUp, $transSetUp);
+            $this->collaboratorReplicator->convert($cisSetUp, $transSetUp);
             $args = $this->processCollaborators($cisSetUp);
         }
 

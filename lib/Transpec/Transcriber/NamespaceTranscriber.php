@@ -4,6 +4,7 @@ namespace Transpec\Transcriber;
 
 use PhpParser\BuilderFactory;
 use PhpParser\Node;
+use Transpec\Descriptor\NamespaceDescriptor;
 use Transpec\Transcriber;
 
 class NamespaceTranscriber implements Transcriber
@@ -26,10 +27,7 @@ class NamespaceTranscriber implements Transcriber
 
     public function convertNamespace(Node\Stmt\Namespace_ $cisNode): Node\Stmt\Namespace_
     {
-        $ns = $this->extractDomainNs($cisNode->name);
-
-        $phpUnitNsList = array_merge(['tests', 'unit'], $ns);
-        $newNs = implode('\\', $phpUnitNsList);
+        $newNs = NamespaceDescriptor::convert((string) $cisNode->name);
 
         $declaration = $this->builderFactory->namespace($newNs);
 
@@ -37,22 +35,5 @@ class NamespaceTranscriber implements Transcriber
         $transNode->stmts = $cisNode->stmts;
 
         return $transNode;
-    }
-
-    /**
-     * @return string[]
-     */
-    public function extractDomainNs(string $phpSpecFqcn): array
-    {
-        $ns = explode('\\', $phpSpecFqcn);
-        $specNs = array_shift($ns);
-
-        if ('spec' !== $specNs) {
-            throw new \UnexpectedValueException('PhpSpec classes must be in the `spec` top-level namespace.');
-        }
-
-        array_pop($ns);
-
-        return $ns;
     }
 }
