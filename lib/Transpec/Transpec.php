@@ -7,10 +7,14 @@ use PhpParser\Error;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\NodeTraverser;
+use PhpParser\PrettyPrinter\Standard;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Finder\SplFileInfo;
+use Transpec\Event\RewriteSetupEvent;
 use Transpec\Extractor\CollaboratorExtractor;
 use Transpec\Factory\CollaboratorRevealCallFactory;
 use Transpec\Factory\SetUpMethodFactory;
+use Transpec\Listener;
 use Transpec\Transcoder\AssertionTranscoder;
 use Transpec\Visitor;
 
@@ -25,9 +29,9 @@ class Transpec
         $this->parser = $parser;
     }
 
-    public static function initialize()
+    public static function initialize(bool $debug = false)
     {
-        $traverser = static::initializeTraverser();
+        $traverser = static::initializeTraverser($debug);
         $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
 
         return new static($traverser, $parser);
@@ -49,8 +53,16 @@ class Transpec
         }
     }
 
-    private static function initializeTraverser(): NodeTraverser
+    private static function initializeTraverser(bool $debug): NodeTraverser
     {
+        $dispatcher = new EventDispatcher();
+
+        if ($debug) {
+            $prettyPrinter = new Standard();
+            $debugListener = new Listener\DebugListener($prettyPrinter);
+            $dispatcher->addListener(RewriteSetupEvent::NAME, $debugListener);
+        }
+
         $traverser = new NodeTraverser();
         $factory = new BuilderFactory();
 
@@ -63,7 +75,7 @@ class Transpec
         $collaboratorExtractor = new CollaboratorExtractor();
         $collaboratorReplicator = new Replicator\CollaboratorReplicator($factory, $collaboratorExtractor);
         $visitors[] = new Visitor\ClassVisitor(
-            new Transcriber\ClassTranscriber($factory, $collaboratorReplicator, $collaboratorExtractor, new SetUpMethodFactory($factory))
+            new Transcriber\ClassTranscriber($dispatcher, $factory, $collaboratorReplicator, $collaboratorExtractor, new SetUpMethodFactory($factory))
         );
 
         $assertionTranscoder = new AssertionTranscoder($factory, new CollaboratorRevealCallFactory($factory));

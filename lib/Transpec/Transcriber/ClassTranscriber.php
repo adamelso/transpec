@@ -4,6 +4,8 @@ namespace Transpec\Transcriber;
 
 use PhpParser\BuilderFactory;
 use PhpParser\Node;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Transpec\Event\RewriteSetupEvent;
 use Transpec\Extractor\CollaboratorExtractor;
 use Transpec\Extractor\TestNameExtractor;
 use Transpec\Factory\SetUpMethodFactory;
@@ -16,9 +18,11 @@ class ClassTranscriber implements Transcriber
     private CollaboratorReplicator $collaboratorReplicator;
     private CollaboratorExtractor $collaboratorExtractor;
     private SetUpMethodFactory $setUpMethodFactory;
+    private EventDispatcherInterface $eventDispatcher;
 
-    public function __construct(BuilderFactory $builderFactory, CollaboratorReplicator $collaboratorReplicator, CollaboratorExtractor $collaboratorExtractor, SetUpMethodFactory $setUpMethodFactory)
+    public function __construct(EventDispatcherInterface $eventDispatcher, BuilderFactory $builderFactory, CollaboratorReplicator $collaboratorReplicator, CollaboratorExtractor $collaboratorExtractor, SetUpMethodFactory $setUpMethodFactory)
     {
+        $this->eventDispatcher = $eventDispatcher;
         $this->builderFactory = $builderFactory;
         $this->collaboratorReplicator = $collaboratorReplicator;
         $this->collaboratorExtractor = $collaboratorExtractor;
@@ -81,7 +85,15 @@ EOT
         }
 
         $transNode = $declaration->getNode();
-        $transNode->stmts = array_merge($transNode->stmts, $cisNode->stmts);
+
+        $portedStatements = $cisNode->stmts;
+        foreach ($portedStatements as $i => $stmt) {
+            if ($stmt instanceof Node\Stmt\ClassMethod && 'let' === (string) $stmt->name) {
+                unset($portedStatements[$i]);
+            }
+        }
+
+        $transNode->stmts = array_merge($transNode->stmts, $portedStatements);
 
         return $transNode;
     }
@@ -120,7 +132,11 @@ EOT
             )
         );
 
-        return $transSetUp->getNode();
+        $setup = $transSetUp->getNode();
+
+        $this->eventDispatcher->dispatch(new RewriteSetupEvent($setup), RewriteSetupEvent::NAME);
+
+        return $setup;
     }
 
     private function processCollaborators(Node\Stmt\ClassMethod $cisSetUp): array
