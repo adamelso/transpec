@@ -3,26 +3,21 @@
 namespace Transpec\Visitor;
 
 use PhpParser\Node;
-use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use Transpec\Transcriber\InitializableSubjectTestTranscriber;
 use Transpec\Transcriber\ScenarioTranscriber;
-use Transpec\Transcriber\SetupTranscriber;
 
 class MethodVisitor extends NodeVisitorAbstract
 {
     private ScenarioTranscriber $testScenarioTranscriber;
     private InitializableSubjectTestTranscriber $initializableSubjectTestTranscriber;
-    private SetupTranscriber $setupTranscriber;
 
     public function __construct(
         ScenarioTranscriber $testScenarioTranscriber,
-        InitializableSubjectTestTranscriber $initializableSubjectTestTranscriber,
-        SetupTranscriber $setupTranscriber
+        InitializableSubjectTestTranscriber $initializableSubjectTestTranscriber
     ) {
         $this->testScenarioTranscriber = $testScenarioTranscriber;
         $this->initializableSubjectTestTranscriber = $initializableSubjectTestTranscriber;
-        $this->setupTranscriber = $setupTranscriber;
     }
 
     public function enterNode(Node $node)

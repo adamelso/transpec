@@ -69,7 +69,6 @@ class Transpec
         $methodTranscribers = [
             new Transcriber\ScenarioTranscriber($factory, $collaboratorReplicator, $assertionTranscoder),
             new Transcriber\InitializableSubjectTestTranscriber($factory),
-            new Transcriber\SetupTranscriber($factory),
         ];
         $visitors[] = new Visitor\MethodVisitor(...$methodTranscribers);
 
