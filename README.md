@@ -53,7 +53,6 @@ Development Roadmap
   - Implement AST visitor matching and conversion for the following PhpSpec methods:
 
     ```
-    if ($node instanceof Symbol\ClassMethod && 'let' === $node->name);
     if ($node instanceof Symbol\ClassMethod && 'letgo' === $node->name);
     if ($node instanceof Symbol\ClassMethod && 'getMatchers' === $node->name);
     ```
