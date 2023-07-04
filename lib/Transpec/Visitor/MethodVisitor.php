@@ -4,6 +4,7 @@ namespace Transpec\Visitor;
 
 use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
+use Transpec\Manifest;
 use Transpec\Transcriber\InitializableSubjectTestTranscriber;
 use Transpec\Transcriber\ScenarioTranscriber;
 
@@ -31,7 +32,7 @@ class MethodVisitor extends NodeVisitorAbstract
         }
 
         if (str_starts_with($node->name->name, 'it_')) {
-            return $this->testScenarioTranscriber->convert($node);
+            return $this->testScenarioTranscriber->convert($node, new Manifest());
         }
 
         return null;

@@ -6,6 +6,7 @@ use PhpParser\Builder;
 use PhpParser\BuilderFactory;
 use PhpParser\Node;
 use Transpec\Extractor\CollaboratorExtractor;
+use Transpec\Manifest;
 use Transpec\Replicator;
 
 class CollaboratorReplicator implements Replicator
@@ -24,7 +25,7 @@ class CollaboratorReplicator implements Replicator
         $this->collaboratorExtractor = $collaboratorExtractor;
     }
 
-    public function convert(Node $cisNode, Builder $transNodeBuilder): void
+    public function convert(Node $cisNode, Builder $transNodeBuilder, Manifest $manifest): void
     {
         if (! $cisNode instanceof Node\Stmt\ClassMethod) {
             throw new \LogicException('A class method is excepted in order to process test subject collaborators.');
@@ -38,14 +39,14 @@ class CollaboratorReplicator implements Replicator
 
         $isLocal = str_starts_with($cisNode->name->name, 'it_');
 
-        $collaboratorStatements = $this->createCollaboratorStatements($collaborators, $isLocal);
+        $collaboratorStatements = $this->createCollaboratorStatements($collaborators, $manifest, $isLocal);
 
         foreach ($collaboratorStatements as $c) {
             $transNodeBuilder->addStmt($c);
         }
     }
 
-    private function createCollaboratorStatements(array $collaborators, bool $isLocal = true): array
+    private function createCollaboratorStatements(array $collaborators, Manifest $manifest, bool $isLocal = true): array
     {
         $stmts = [];
 
@@ -56,8 +57,10 @@ class CollaboratorReplicator implements Replicator
             }
 
             if ($isLocal) {
+                $manifest->addLocalCollaborator($var);
                 $collaboratorVar = $this->builderFactory->var($var);
             } else {
+                $manifest->addGlobalCollaborator($var);
                 $collaboratorVar = $this->builderFactory->propertyFetch(
                     $this->builderFactory->var('this'),
                     $var

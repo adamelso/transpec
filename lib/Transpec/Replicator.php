@@ -7,5 +7,5 @@ use PhpParser\Node;
 
 interface Replicator
 {
-    public function convert(Node $cisNode, Builder $transNodeBuilder): void;
+    public function convert(Node $cisNode, Builder $transNodeBuilder, Manifest $manifest): void;
 }

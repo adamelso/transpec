@@ -68,6 +68,8 @@ class Transpec
 
         $visitors = [];
 
+        $visitors[] = new Visitor\GetWrappedObjectVisitor();
+
         $visitors[] = new Visitor\NamespaceVisitor(
             new Transcriber\NamespaceTranscriber($factory)
         );
@@ -78,9 +80,10 @@ class Transpec
             new Transcriber\ClassTranscriber($dispatcher, $factory, $collaboratorReplicator, $collaboratorExtractor, new SetUpMethodFactory($factory))
         );
 
-        $assertionTranscoder = new AssertionTranscoder($factory, new CollaboratorRevealCallFactory($factory));
+        $collaboratorRevealCallFactory = new CollaboratorRevealCallFactory($factory);
+        $assertionTranscoder = new AssertionTranscoder($factory, $collaboratorRevealCallFactory);
         $methodTranscribers = [
-            new Transcriber\ScenarioTranscriber($factory, $collaboratorReplicator, $assertionTranscoder),
+            new Transcriber\ScenarioTranscriber($factory, $collaboratorReplicator, $assertionTranscoder, $collaboratorRevealCallFactory),
             new Transcriber\InitializableSubjectTestTranscriber($factory),
         ];
         $visitors[] = new Visitor\MethodVisitor(...$methodTranscribers);

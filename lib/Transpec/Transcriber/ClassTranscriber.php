@@ -9,6 +9,7 @@ use Transpec\Event\RewriteSetupEvent;
 use Transpec\Extractor\CollaboratorExtractor;
 use Transpec\Extractor\TestNameExtractor;
 use Transpec\Factory\SetUpMethodFactory;
+use Transpec\Manifest;
 use Transpec\Replicator\CollaboratorReplicator;
 use Transpec\Transcriber;
 
@@ -40,6 +41,7 @@ class ClassTranscriber implements Transcriber
 
     public function convertTestClass(Node\Stmt\Class_ $cisNode): Node\Stmt\Class_
     {
+        $manifest = new Manifest();
         $testName = TestNameExtractor::extract($cisNode->name);
         $testClassname = $testName.'Test';
 
@@ -58,7 +60,7 @@ class ClassTranscriber implements Transcriber
             $collaborators = $this->collaboratorExtractor->extract($cisSetUp);
         }
 
-        $transSetUp = $this->rewriteSetup($cisSetUp, $testName);
+        $transSetUp = $this->rewriteSetup($cisSetUp, $testName, $manifest);
 
         $declaration = $this->builderFactory
             ->class($testClassname)
@@ -88,6 +90,7 @@ EOT
 
         $portedStatements = $cisNode->stmts;
         foreach ($portedStatements as $i => $stmt) {
+            // @todo Copy over any statements within let() to setUp()
             if ($stmt instanceof Node\Stmt\ClassMethod && 'let' === (string) $stmt->name) {
                 unset($portedStatements[$i]);
             }
@@ -113,14 +116,14 @@ EOT
         return null;
     }
 
-    private function rewriteSetup(?Node\Stmt\ClassMethod $cisSetUp, string $testClassname)
+    private function rewriteSetup(?Node\Stmt\ClassMethod $cisSetUp, string $testClassname, Manifest $manifest)
     {
         $transSetUp = $this->setUpMethodFactory->build();
 
         $args = [];
 
         if ($cisSetUp) {
-            $this->collaboratorReplicator->convert($cisSetUp, $transSetUp);
+            $this->collaboratorReplicator->convert($cisSetUp, $transSetUp, $manifest);
             $args = $this->processCollaborators($cisSetUp);
         }
 
