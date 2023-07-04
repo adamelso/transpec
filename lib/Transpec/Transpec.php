@@ -60,9 +60,10 @@ class Transpec
             new Transcriber\NamespaceTranscriber($factory)
         );
 
-        $collaboratorReplicator = new Replicator\CollaboratorReplicator($factory, new CollaboratorExtractor());
+        $collaboratorExtractor = new CollaboratorExtractor();
+        $collaboratorReplicator = new Replicator\CollaboratorReplicator($factory, $collaboratorExtractor);
         $visitors[] = new Visitor\ClassVisitor(
-            new Transcriber\ClassTranscriber($factory, $collaboratorReplicator, new SetUpMethodFactory($factory))
+            new Transcriber\ClassTranscriber($factory, $collaboratorReplicator, $collaboratorExtractor, new SetUpMethodFactory($factory))
         );
 
         $assertionTranscoder = new AssertionTranscoder($factory, new CollaboratorRevealCallFactory($factory));

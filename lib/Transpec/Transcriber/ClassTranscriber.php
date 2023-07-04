@@ -14,12 +14,14 @@ class ClassTranscriber implements Transcriber
 {
     private BuilderFactory $builderFactory;
     private CollaboratorReplicator $collaboratorReplicator;
+    private CollaboratorExtractor $collaboratorExtractor;
     private SetUpMethodFactory $setUpMethodFactory;
 
-    public function __construct(BuilderFactory $builderFactory, CollaboratorReplicator $collaboratorReplicator, SetUpMethodFactory $setUpMethodFactory)
+    public function __construct(BuilderFactory $builderFactory, CollaboratorReplicator $collaboratorReplicator, CollaboratorExtractor $collaboratorExtractor, SetUpMethodFactory $setUpMethodFactory)
     {
         $this->builderFactory = $builderFactory;
         $this->collaboratorReplicator = $collaboratorReplicator;
+        $this->collaboratorExtractor = $collaboratorExtractor;
         $this->setUpMethodFactory = $setUpMethodFactory;
     }
 
@@ -49,7 +51,7 @@ class ClassTranscriber implements Transcriber
         $collaborators = [];
 
         if ($cisSetUp) {
-            $collaborators = CollaboratorExtractor::extract($cisSetUp);
+            $collaborators = $this->collaboratorExtractor->extract($cisSetUp);
         }
 
         $transSetUp = $this->rewriteSetup($cisSetUp, $testName);
