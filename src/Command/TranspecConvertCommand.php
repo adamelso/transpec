@@ -62,6 +62,18 @@ class TranspecConvertCommand extends Command
             $newDir[] = $name.'Test.php';
             $newSaveLocation = implode('/', $newDir);
 
+            $confirmWrite = true;
+            if ($fs->exists($newSaveLocation) && $input->isInteractive()) {
+                $confirmWrite = $io->confirm("Overwrite {$newSaveLocation} ?");
+            }
+
+            if (! $confirmWrite) {
+                $io->writeln("Skipping <info>{$newSaveLocation}</info>.");
+                $io->writeln('');
+
+                continue;
+            }
+
             $fs->dumpFile($newSaveLocation, $php);
 
             $io->writeln("Writing <info>{$newSaveLocation}</info>.");
