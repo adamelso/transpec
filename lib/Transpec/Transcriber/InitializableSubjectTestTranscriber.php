@@ -30,7 +30,11 @@ class InitializableSubjectTestTranscriber implements Transcriber
     {
         $transNode = clone $cisNode;
         $transNode->name = ScenarioDescriptor::convert($cisNode->name);
-        $transNode->flags = BuilderHelpers::addModifier($transNode->flags, Node\Stmt\Class_::MODIFIER_PUBLIC);
+
+        if (! ($transNode->flags & Node\Stmt\Class_::MODIFIER_PUBLIC)) {
+            $transNode->flags = BuilderHelpers::addModifier($transNode->flags, Node\Stmt\Class_::MODIFIER_PUBLIC);
+        }
+
         $transNode->returnType = new Node\Name('void');
 
         foreach ($transNode->stmts as $stmt) {
