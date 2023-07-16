@@ -108,6 +108,14 @@ class ScenarioTranscriber implements Transcriber
                 case 'willReturn':
                 case 'shouldBeCalled':
                 case 'shouldNotBeCalled':
+                    if ('shouldBeCalled' === $leftFetch->name->name) {
+                        // Handles chained mock and stub: i.e. $mock->willReturn('x')->shouldBeCalled();
+                        [$n] = $this->rewriteStubOrMock($leftFetch, $leftFetch->var, $manifest);
+                        $stmt->expr = $n;
+                        $newStatements[] = $stmt;
+                        break;
+                    }
+
                     [$n] = $this->rewriteStubOrMock($rightCall, $leftFetch, $manifest);
                     $stmt->expr = $n;
                     $newStatements[] = $stmt;
@@ -167,7 +175,8 @@ class ScenarioTranscriber implements Transcriber
     private function rewriteStubOrMock(Node\Expr\MethodCall $expectation, Node\Expr\MethodCall $subjectCall, Manifest $manifest): array
     {
         if (! $subjectCall->var instanceof Node\Expr\Variable) {
-            throw new \LogicException('Expected variable name of collaborator to create stub.');
+            $l = $subjectCall->getLine();
+            throw new \LogicException("Expected variable name of collaborator to create stub on line {$l}.");
         }
 
         $collaboratorName = (string) $subjectCall->var->name;
