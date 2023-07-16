@@ -6,5 +6,5 @@ use PhpParser\Node;
 
 interface Transcriber
 {
-    public function convert(Node $cisNode): Node;
+    public function convert(Node $cisNode, Manifest $manifest): Node;
 }

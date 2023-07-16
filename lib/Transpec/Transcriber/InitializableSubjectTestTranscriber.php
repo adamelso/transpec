@@ -6,6 +6,7 @@ use PhpParser\BuilderFactory;
 use PhpParser\BuilderHelpers;
 use PhpParser\Node;
 use Transpec\Descriptor\ScenarioDescriptor;
+use Transpec\Manifest;
 use Transpec\Transcriber;
 
 class InitializableSubjectTestTranscriber implements Transcriber
@@ -17,7 +18,7 @@ class InitializableSubjectTestTranscriber implements Transcriber
         $this->builderFactory = $builderFactory;
     }
 
-    public function convert(Node $cisNode): Node
+    public function convert(Node $cisNode, Manifest $manifest): Node
     {
         if (! $cisNode instanceof Node\Stmt\ClassMethod) {
             throw new \DomainException('This transcriber can only convert class method declarations.');

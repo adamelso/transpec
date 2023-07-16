@@ -26,7 +26,7 @@ class ScenarioTranscriber implements Transcriber
         $this->collaboratorRevealCallFactory = $collaboratorRevealCallFactory;
     }
 
-    public function convert(Node $cisNode, Manifest $manifest = null): Node
+    public function convert(Node $cisNode, Manifest $manifest): Node
     {
         if (! $manifest) {
             throw new \DomainException('A manifest is required.');
@@ -195,8 +195,12 @@ class ScenarioTranscriber implements Transcriber
         $stubArgs = [];
 
         foreach ($subjectCall->args as $p) {
-            if ($p->value instanceof Node\Expr\Variable && $manifest->isCollaborator($p->value->name)) {
-                $subjectArgs[] = $this->buildRevealCallOnCollaborator($p->value);
+            if ($p->value instanceof Node\Expr\Variable) {
+                if ($manifest->isGlobalCollaborator($p->value->name)) {
+                    $subjectArgs[] = $this->buildRevealCallOnGlobalCollaborator($p->value);
+                } elseif ($manifest->isLocalCollaborator($p->value->name)) {
+                    $subjectArgs[] = $this->buildRevealCallOnCollaborator($p->value);
+                }
             } else {
                 $subjectArgs[] = $p->value;
             }
@@ -214,13 +218,13 @@ class ScenarioTranscriber implements Transcriber
         $call = $this->builderFactory->methodCall(
             $collaborator,
             $subjectCall->name->name,
-            $this->builderFactory->args($subjectArgs)
+            $this->builderFactory->args(array_filter($subjectArgs))
         );
 
         $stub = $this->builderFactory->methodCall(
             $call,
             $expectation->name->name,
-            $this->builderFactory->args($stubArgs)
+            $this->builderFactory->args(array_filter($stubArgs))
         );
 
         return [$stub];
@@ -233,6 +237,20 @@ class ScenarioTranscriber implements Transcriber
     {
         return $this->builderFactory->methodCall(
             $this->builderFactory->var($var->name),
+            'reveal'
+        );
+    }
+
+    /**
+     * Writes `$this->collaborator->reveal()`.
+     */
+    private function buildRevealCallOnGlobalCollaborator(Node\Expr\Variable $var): Node\Expr\MethodCall
+    {
+        return $this->builderFactory->methodCall(
+            $this->builderFactory->propertyFetch(
+                $this->builderFactory->var('this'),
+                $var->name
+            ),
             'reveal'
         );
     }

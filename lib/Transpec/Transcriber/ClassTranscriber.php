@@ -30,18 +30,17 @@ class ClassTranscriber implements Transcriber
         $this->setUpMethodFactory = $setUpMethodFactory;
     }
 
-    public function convert(Node $cisNode): Node
+    public function convert(Node $cisNode, Manifest $manifest): Node
     {
         if (! $cisNode instanceof Node\Stmt\Class_) {
             throw new \DomainException('This transcriber can only convert class declarations.');
         }
 
-        return $this->convertTestClass($cisNode);
+        return $this->convertTestClass($cisNode, $manifest);
     }
 
-    public function convertTestClass(Node\Stmt\Class_ $cisNode): Node\Stmt\Class_
+    private function convertTestClass(Node\Stmt\Class_ $cisNode, Manifest $manifest): Node\Stmt\Class_
     {
-        $manifest = new Manifest();
         $testName = TestNameExtractor::extract($cisNode->name);
         $testClassname = $testName.'Test';
 
