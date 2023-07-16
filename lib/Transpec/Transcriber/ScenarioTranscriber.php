@@ -97,6 +97,7 @@ class ScenarioTranscriber implements Transcriber
 
             switch ($rightCall->name->name) {
                 case 'shouldImplement':
+                case 'shouldHaveType':
                     // @todo Extract to a transcoder.
                     return (new InitializableSubjectTestTranscriber($this->builderFactory))
                         ->convert($cisNode, $manifest);

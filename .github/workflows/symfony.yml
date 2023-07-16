@@ -39,8 +39,10 @@ jobs:
       run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
     - name: Execute canon unit tests via PhpSpec
       run: bin/phpspec run --format=pretty --verbose --no-interaction
-    - name: Convert unit tests from PhpSpec to PHPUnit
+    - name: Dogfooding via converting unit tests from PhpSpec to PHPUnit
       run: |
         bin/console transpec:convert --no-interaction spec
     - name: Execute converted unit tests via PHPUnit
       run: bin/phpunit --testdox
+    - name: 'Candidate conversion: Convert sylius/addressing unit tests from PhpSpec to PHPUnit, then run them'
+      run: make test_candidates
