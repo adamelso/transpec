@@ -15,13 +15,15 @@ use PhpParser\PrettyPrinter;
 class TranspecConvertCommand extends Command
 {
     private const LOCATION = 'location';
+    public const TARGET = 'target';
 
     protected static $defaultName = 'transpec:convert';
 
     protected function configure(): void
     {
         $this
-            ->addArgument(self::LOCATION, InputArgument::REQUIRED, 'Path to the test class file to convert. Only PhpSpec to PHPUnit is currently supported with partial results.')
+            ->addArgument(self::LOCATION, InputArgument::REQUIRED, 'Path to the test class file or directory to convert. Only PhpSpec to PHPUnit is currently supported with partial results.')
+            ->addArgument(self::TARGET, InputArgument::OPTIONAL, 'The path to save converted tests to.', 'tests/unit')
         ;
     }
 
@@ -35,6 +37,8 @@ class TranspecConvertCommand extends Command
         $prettyPrinter = new PrettyPrinter\Standard();
         $transpec = Transpec::initialize();
 
+        $baseTargetPath = explode('/', $input->getArgument(self::TARGET));
+
         foreach (Locator::fetch($testClassLocation) as $testFile) {
             $io->writeln("Converting <info>{$testFile->getFilename()}</info>");
 
@@ -47,8 +51,7 @@ class TranspecConvertCommand extends Command
 
             foreach (explode('/', $locationDir) as $dir) {
                 if ('spec' === $dir) {
-                    $newDir[] = 'tests';
-                    $newDir[] = 'unit';
+                    $newDir = $baseTargetPath;
 
                     continue;
                 }
@@ -61,6 +64,11 @@ class TranspecConvertCommand extends Command
 
             $newDir[] = $name.'Test.php';
             $newSaveLocation = implode('/', $newDir);
+
+            // Save to relative target path if not absolute.
+            if ('/' !== $newSaveLocation[0]) {
+                $newSaveLocation = getcwd().'/'.$newSaveLocation;
+            }
 
             $confirmWrite = true;
             if ($fs->exists($newSaveLocation) && $input->isInteractive()) {
