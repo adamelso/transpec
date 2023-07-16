@@ -123,7 +123,12 @@ class ScenarioTranscriber implements Transcriber
 
                 // Example: `$this->shouldThrow( \Exception::class )->duringSubjectMethod( $exampleArgs );`
                 default:
-                    if (str_starts_with($rightCall->name->name, 'during') && 'shouldThrow' === $leftFetch->name->name) {
+                    if (
+                        (
+                            str_starts_with($rightCall->name->name, 'during')
+                            || 'during' === $rightCall->name->name
+                        ) && 'shouldThrow' === $leftFetch->name->name
+                    ) {
                         // Note the subject and assertion calls are swapped round.
                         $revealCollaborator = $leftFetch;
                         $y = $rightCall;
@@ -149,7 +154,11 @@ class ScenarioTranscriber implements Transcriber
         $expected = $assertionCall->args;
         $actual = $subjectCall->args;
 
-        $methodName = lcfirst(substr($subjectCall->name, strlen('during')));
+        if ('during' === $subjectCall->name->name) {
+            $methodName = lcfirst($subjectCall->args[0]->value->value);
+        } else {
+            $methodName = lcfirst(substr($subjectCall->name->name, strlen('during')));
+        }
 
         $expectException = new Node\Stmt\Expression(
             new Node\Expr\MethodCall(new Node\Expr\Variable('this'), 'expectException', [
