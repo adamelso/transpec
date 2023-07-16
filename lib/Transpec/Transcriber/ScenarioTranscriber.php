@@ -155,16 +155,49 @@ class ScenarioTranscriber implements Transcriber
         return $transNodeBuilder->getNode();
     }
 
-    private function rewriteExceptionAssertion(Node\Expr\MethodCall $assertionCall, Node\Expr\MethodCall $subjectCall): array
+    private function rewriteExceptionAssertion(Manifest $manifest, Node\Expr\MethodCall $assertionCall, Node\Expr\MethodCall $subjectCall): array
     {
         $expected = $assertionCall->args;
         $actual = $subjectCall->args;
 
         if ('during' === $subjectCall->name->name) {
-            $methodName = lcfirst($subjectCall->args[0]->value->value);
-        } else {
-            $methodName = lcfirst(substr($subjectCall->name->name, strlen('during')));
+            $expectException = new Node\Stmt\Expression(
+                new Node\Expr\MethodCall(new Node\Expr\Variable('this'), 'expectException', [
+                    $expected[0],
+                ])
+            );
+
+            // @todo What happens if there are no method args?
+            [$methodNameArg, $methodArgs] = $actual;
+            $methodName = lcfirst($methodNameArg->value->value);
+
+            $argValues = [];
+
+            /** @var Node\Expr\ArrayItem $n */
+            foreach ($methodArgs->value->items as $n) {
+                if ($n->value instanceof Node\Expr\Variable && $manifest->isLocalCollaborator($n->value->name)) {
+                    $argValues[] = $this->collaboratorRevealCallFactory->build($n->value);
+                    continue;
+                }
+
+                $argValues[] = $n->value;
+            }
+
+            $callTestSubject = new Node\Stmt\Expression(
+                new Node\Expr\MethodCall(
+                    new Node\Expr\PropertyFetch(new Node\Expr\Variable('this'), '_subject'),
+                    $methodName,
+                    $this->builderFactory->args($argValues)
+                )
+            );
+
+            return [
+                $expectException,
+                $callTestSubject,
+            ];
         }
+
+        $methodName = lcfirst(substr($subjectCall->name->name, strlen('during')));
 
         $expectException = new Node\Stmt\Expression(
             new Node\Expr\MethodCall(new Node\Expr\Variable('this'), 'expectException', [
