@@ -31,6 +31,7 @@ class ScenarioTranscriber implements Transcriber
         if (! $manifest) {
             throw new \DomainException('A manifest is required.');
         }
+
         if (! $cisNode instanceof Node\Stmt\ClassMethod) {
             throw new \DomainException('This transcriber can only convert class method declarations.');
         }
@@ -95,6 +96,11 @@ class ScenarioTranscriber implements Transcriber
             $leftFetch = $stmt->expr->var;
 
             switch ($rightCall->name->name) {
+                case 'shouldImplement':
+                    // @todo Extract to a transcoder.
+                    return (new InitializableSubjectTestTranscriber($this->builderFactory))
+                        ->convert($cisNode, $manifest);
+
                 case 'shouldReturn':
                 case 'shouldBe':
                 case 'shouldBeLike':
@@ -132,7 +138,7 @@ class ScenarioTranscriber implements Transcriber
                         // Note the subject and assertion calls are swapped round.
                         $revealCollaborator = $leftFetch;
                         $y = $rightCall;
-                        $newStatements = array_merge($newStatements, $this->rewriteExceptionAssertion($revealCollaborator, $y));
+                        $newStatements = array_merge($newStatements, $this->rewriteExceptionAssertion($manifest, $revealCollaborator, $y));
                         break;
                     }
 

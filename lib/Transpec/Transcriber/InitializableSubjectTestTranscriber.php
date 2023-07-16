@@ -27,7 +27,7 @@ class InitializableSubjectTestTranscriber implements Transcriber
         return $this->convertTestForInitializingSubject($cisNode);
     }
 
-    public function convertTestForInitializingSubject(Node\Stmt\ClassMethod $cisNode)
+    public function convertTestForInitializingSubject(Node\Stmt\ClassMethod $cisNode): Node\Stmt\ClassMethod
     {
         $transNode = clone $cisNode;
         $transNode->name = ScenarioDescriptor::convert($cisNode->name);
