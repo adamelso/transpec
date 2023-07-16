@@ -72,7 +72,6 @@ class ScenarioTranscriber implements Transcriber
                 $stmt->expr instanceof Node\Expr\Assign
                 && $stmt->expr->var instanceof Node\Expr\PropertyFetch
                 && $stmt->expr->expr instanceof Node\Expr\Variable
-                // @todo Create collaborator manifest to confirm if this is a collaborator.
             ) {
                 $revealCollaborator = $this->buildRevealCallOnCollaborator($stmt->expr->expr);
                 $manifest->addPublicPropertyCollaborator($stmt->expr->expr->name);
@@ -86,7 +85,7 @@ class ScenarioTranscriber implements Transcriber
                 continue;
             }
 
-            // $this->subjectMethod( $exampleArgs )
+            // Example: `$this->subjectMethod( $exampleArgs )`.
             if (! $stmt->expr instanceof Node\Expr\MethodCall) {
                 $newStatements[] = $stmt;
                 continue;
@@ -108,8 +107,8 @@ class ScenarioTranscriber implements Transcriber
                 case 'willReturn':
                 case 'shouldBeCalled':
                 case 'shouldNotBeCalled':
-                    if ('shouldBeCalled' === $leftFetch->name->name) {
-                        // Handles chained mock and stub: i.e. $mock->willReturn('x')->shouldBeCalled();
+                    if ('shouldBeCalled' === $leftFetch->name->name || 'willReturn' === $leftFetch->name->name) {
+                        // Handles chained mock and stub: i.e. `$collaborator->willReturn('x')->shouldBeCalled();`.
                         [$n] = $this->rewriteStubOrMock($leftFetch, $leftFetch->var, $manifest);
                         $stmt->expr = $n;
                         $newStatements[] = $stmt;
@@ -122,7 +121,7 @@ class ScenarioTranscriber implements Transcriber
 
                     break;
 
-                // $this->shouldThrow( \Exception::class )->duringSubjectMethod( $exampleArgs );
+                // Example: `$this->shouldThrow( \Exception::class )->duringSubjectMethod( $exampleArgs );`
                 default:
                     if (str_starts_with($rightCall->name->name, 'during') && 'shouldThrow' === $leftFetch->name->name) {
                         // Note the subject and assertion calls are swapped round.
@@ -182,11 +181,11 @@ class ScenarioTranscriber implements Transcriber
         $collaboratorName = (string) $subjectCall->var->name;
 
         if ($manifest->isLocalCollaborator($collaboratorName) || $manifest->isPublicPropertyCollaborator($collaboratorName)) {
-            $m = $this->builderFactory->var($collaboratorName);
+            $collaborator = $this->builderFactory->var($collaboratorName);
         } elseif ($manifest->isSubjectInputCollaborator($collaboratorName)) {
-            $m = $this->builderFactory->var($collaboratorName);
+            $collaborator = $this->builderFactory->var($collaboratorName);
         } else {
-            $m = $this->builderFactory->propertyFetch(
+            $collaborator = $this->builderFactory->propertyFetch(
                 $this->builderFactory->var('this'),
                 $collaboratorName
             );
@@ -195,25 +194,25 @@ class ScenarioTranscriber implements Transcriber
         $subjectArgs = [];
         $stubArgs = [];
 
-        foreach ($subjectCall->args as $x) {
-            if ($x->value instanceof Node\Expr\Variable && $manifest->isCollaborator($x->value->name)) {
-                $subjectArgs[] = $this->buildRevealCallOnCollaborator($x->value);
+        foreach ($subjectCall->args as $p) {
+            if ($p->value instanceof Node\Expr\Variable && $manifest->isCollaborator($p->value->name)) {
+                $subjectArgs[] = $this->buildRevealCallOnCollaborator($p->value);
             } else {
-                $subjectArgs[] = $x->value;
+                $subjectArgs[] = $p->value;
             }
         }
 
-        foreach ($expectation->args as $y) {
-            if ($y->value instanceof Node\Expr\Variable) {
+        foreach ($expectation->args as $q) {
+            if ($q->value instanceof Node\Expr\Variable) {
                 // @todo Check if collaborator.
-                $stubArgs[] = $this->buildRevealCallOnCollaborator($y->value);
+                $stubArgs[] = $this->buildRevealCallOnCollaborator($q->value);
             } else {
-                $stubArgs[] = $y->value;
+                $stubArgs[] = $q->value;
             }
         }
 
         $call = $this->builderFactory->methodCall(
-            $m,
+            $collaborator,
             $subjectCall->name->name,
             $this->builderFactory->args($subjectArgs)
         );
@@ -227,6 +226,9 @@ class ScenarioTranscriber implements Transcriber
         return [$stub];
     }
 
+    /**
+     * Writes `$collaborator->reveal()`.
+     */
     private function buildRevealCallOnCollaborator(Node\Expr\Variable $var): Node\Expr\MethodCall
     {
         return $this->builderFactory->methodCall(
