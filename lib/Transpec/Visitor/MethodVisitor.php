@@ -12,11 +12,14 @@ class MethodVisitor extends NodeVisitorAbstract
 {
     private ScenarioTranscriber $testScenarioTranscriber;
     private InitializableSubjectTestTranscriber $initializableSubjectTestTranscriber;
+    private Manifest $manifest;
 
     public function __construct(
+        Manifest $manifest,
         ScenarioTranscriber $testScenarioTranscriber,
         InitializableSubjectTestTranscriber $initializableSubjectTestTranscriber
     ) {
+        $this->manifest = $manifest;
         $this->testScenarioTranscriber = $testScenarioTranscriber;
         $this->initializableSubjectTestTranscriber = $initializableSubjectTestTranscriber;
     }
@@ -28,11 +31,11 @@ class MethodVisitor extends NodeVisitorAbstract
         }
 
         if ('it_is_initializable' === $node->name->name) {
-            return $this->initializableSubjectTestTranscriber->convert($node);
+            return $this->initializableSubjectTestTranscriber->convert($node, $this->manifest);
         }
 
         if (str_starts_with($node->name->name, 'it_')) {
-            return $this->testScenarioTranscriber->convert($node, new Manifest());
+            return $this->testScenarioTranscriber->convert($node, $this->manifest);
         }
 
         return null;

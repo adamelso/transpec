@@ -5,6 +5,7 @@ namespace Transpec\Transcriber;
 use PhpParser\BuilderFactory;
 use PhpParser\Node;
 use Transpec\Descriptor\NamespaceDescriptor;
+use Transpec\Manifest;
 use Transpec\Transcriber;
 
 class NamespaceTranscriber implements Transcriber
@@ -16,7 +17,7 @@ class NamespaceTranscriber implements Transcriber
         $this->builderFactory = $builderFactory;
     }
 
-    public function convert(Node $cisNode): Node
+    public function convert(Node $cisNode, Manifest $manifest): Node
     {
         if (! $cisNode instanceof Node\Stmt\Namespace_) {
             throw new \DomainException('This transcriber can only convert namespace declarations.');

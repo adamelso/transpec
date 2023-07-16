@@ -26,11 +26,12 @@ class ScenarioTranscriber implements Transcriber
         $this->collaboratorRevealCallFactory = $collaboratorRevealCallFactory;
     }
 
-    public function convert(Node $cisNode, Manifest $manifest = null): Node
+    public function convert(Node $cisNode, Manifest $manifest): Node
     {
         if (! $manifest) {
             throw new \DomainException('A manifest is required.');
         }
+
         if (! $cisNode instanceof Node\Stmt\ClassMethod) {
             throw new \DomainException('This transcriber can only convert class method declarations.');
         }
@@ -72,7 +73,6 @@ class ScenarioTranscriber implements Transcriber
                 $stmt->expr instanceof Node\Expr\Assign
                 && $stmt->expr->var instanceof Node\Expr\PropertyFetch
                 && $stmt->expr->expr instanceof Node\Expr\Variable
-                // @todo Create collaborator manifest to confirm if this is a collaborator.
             ) {
                 $revealCollaborator = $this->buildRevealCallOnCollaborator($stmt->expr->expr);
                 $manifest->addPublicPropertyCollaborator($stmt->expr->expr->name);
@@ -86,7 +86,7 @@ class ScenarioTranscriber implements Transcriber
                 continue;
             }
 
-            // $this->subjectMethod( $exampleArgs )
+            // Example: `$this->subjectMethod( $exampleArgs )`.
             if (! $stmt->expr instanceof Node\Expr\MethodCall) {
                 $newStatements[] = $stmt;
                 continue;
@@ -96,6 +96,12 @@ class ScenarioTranscriber implements Transcriber
             $leftFetch = $stmt->expr->var;
 
             switch ($rightCall->name->name) {
+                case 'shouldImplement':
+                case 'shouldHaveType':
+                    // @todo Extract to a transcoder.
+                    return (new InitializableSubjectTestTranscriber($this->builderFactory))
+                        ->convert($cisNode, $manifest);
+
                 case 'shouldReturn':
                 case 'shouldBe':
                 case 'shouldBeLike':
@@ -108,19 +114,32 @@ class ScenarioTranscriber implements Transcriber
                 case 'willReturn':
                 case 'shouldBeCalled':
                 case 'shouldNotBeCalled':
+                    if ('shouldBeCalled' === $leftFetch->name->name || 'willReturn' === $leftFetch->name->name) {
+                        // Handles chained mock and stub: i.e. `$collaborator->willReturn('x')->shouldBeCalled();`.
+                        [$n] = $this->rewriteStubOrMock($leftFetch, $leftFetch->var, $manifest);
+                        $stmt->expr = $n;
+                        $newStatements[] = $stmt;
+                        break;
+                    }
+
                     [$n] = $this->rewriteStubOrMock($rightCall, $leftFetch, $manifest);
                     $stmt->expr = $n;
                     $newStatements[] = $stmt;
 
                     break;
 
-                // $this->shouldThrow( \Exception::class )->duringSubjectMethod( $exampleArgs );
+                // Example: `$this->shouldThrow( \Exception::class )->duringSubjectMethod( $exampleArgs );`
                 default:
-                    if (str_starts_with($rightCall->name->name, 'during') && 'shouldThrow' === $leftFetch->name->name) {
+                    if (
+                        (
+                            str_starts_with($rightCall->name->name, 'during')
+                            || 'during' === $rightCall->name->name
+                        ) && 'shouldThrow' === $leftFetch->name->name
+                    ) {
                         // Note the subject and assertion calls are swapped round.
                         $revealCollaborator = $leftFetch;
                         $y = $rightCall;
-                        $newStatements = array_merge($newStatements, $this->rewriteExceptionAssertion($revealCollaborator, $y));
+                        $newStatements = array_merge($newStatements, $this->rewriteExceptionAssertion($manifest, $revealCollaborator, $y));
                         break;
                     }
 
@@ -137,12 +156,49 @@ class ScenarioTranscriber implements Transcriber
         return $transNodeBuilder->getNode();
     }
 
-    private function rewriteExceptionAssertion(Node\Expr\MethodCall $assertionCall, Node\Expr\MethodCall $subjectCall): array
+    private function rewriteExceptionAssertion(Manifest $manifest, Node\Expr\MethodCall $assertionCall, Node\Expr\MethodCall $subjectCall): array
     {
         $expected = $assertionCall->args;
         $actual = $subjectCall->args;
 
-        $methodName = lcfirst(substr($subjectCall->name, strlen('during')));
+        if ('during' === $subjectCall->name->name) {
+            $expectException = new Node\Stmt\Expression(
+                new Node\Expr\MethodCall(new Node\Expr\Variable('this'), 'expectException', [
+                    $expected[0],
+                ])
+            );
+
+            // @todo What happens if there are no method args?
+            [$methodNameArg, $methodArgs] = $actual;
+            $methodName = lcfirst($methodNameArg->value->value);
+
+            $argValues = [];
+
+            /** @var Node\Expr\ArrayItem $n */
+            foreach ($methodArgs->value->items as $n) {
+                if ($n->value instanceof Node\Expr\Variable && $manifest->isLocalCollaborator($n->value->name)) {
+                    $argValues[] = $this->collaboratorRevealCallFactory->build($n->value);
+                    continue;
+                }
+
+                $argValues[] = $n->value;
+            }
+
+            $callTestSubject = new Node\Stmt\Expression(
+                new Node\Expr\MethodCall(
+                    new Node\Expr\PropertyFetch(new Node\Expr\Variable('this'), '_subject'),
+                    $methodName,
+                    $this->builderFactory->args($argValues)
+                )
+            );
+
+            return [
+                $expectException,
+                $callTestSubject,
+            ];
+        }
+
+        $methodName = lcfirst(substr($subjectCall->name->name, strlen('during')));
 
         $expectException = new Node\Stmt\Expression(
             new Node\Expr\MethodCall(new Node\Expr\Variable('this'), 'expectException', [
@@ -167,17 +223,18 @@ class ScenarioTranscriber implements Transcriber
     private function rewriteStubOrMock(Node\Expr\MethodCall $expectation, Node\Expr\MethodCall $subjectCall, Manifest $manifest): array
     {
         if (! $subjectCall->var instanceof Node\Expr\Variable) {
-            throw new \LogicException('Expected variable name of collaborator to create stub.');
+            $l = $subjectCall->getLine();
+            throw new \LogicException("Expected variable name of collaborator to create stub on line {$l}.");
         }
 
         $collaboratorName = (string) $subjectCall->var->name;
 
         if ($manifest->isLocalCollaborator($collaboratorName) || $manifest->isPublicPropertyCollaborator($collaboratorName)) {
-            $m = $this->builderFactory->var($collaboratorName);
+            $collaborator = $this->builderFactory->var($collaboratorName);
         } elseif ($manifest->isSubjectInputCollaborator($collaboratorName)) {
-            $m = $this->builderFactory->var($collaboratorName);
+            $collaborator = $this->builderFactory->var($collaboratorName);
         } else {
-            $m = $this->builderFactory->propertyFetch(
+            $collaborator = $this->builderFactory->propertyFetch(
                 $this->builderFactory->var('this'),
                 $collaboratorName
             );
@@ -186,42 +243,63 @@ class ScenarioTranscriber implements Transcriber
         $subjectArgs = [];
         $stubArgs = [];
 
-        foreach ($subjectCall->args as $x) {
-            if ($x->value instanceof Node\Expr\Variable && $manifest->isCollaborator($x->value->name)) {
-                $subjectArgs[] = $this->buildRevealCallOnCollaborator($x->value);
+        foreach ($subjectCall->args as $p) {
+            if ($p->value instanceof Node\Expr\Variable) {
+                if ($manifest->isGlobalCollaborator($p->value->name)) {
+                    $subjectArgs[] = $this->buildRevealCallOnGlobalCollaborator($p->value);
+                } elseif ($manifest->isLocalCollaborator($p->value->name)) {
+                    $subjectArgs[] = $this->buildRevealCallOnCollaborator($p->value);
+                }
             } else {
-                $subjectArgs[] = $x->value;
+                $subjectArgs[] = $p->value;
             }
         }
 
-        foreach ($expectation->args as $y) {
-            if ($y->value instanceof Node\Expr\Variable) {
+        foreach ($expectation->args as $q) {
+            if ($q->value instanceof Node\Expr\Variable) {
                 // @todo Check if collaborator.
-                $stubArgs[] = $this->buildRevealCallOnCollaborator($y->value);
+                $stubArgs[] = $this->buildRevealCallOnCollaborator($q->value);
             } else {
-                $stubArgs[] = $y->value;
+                $stubArgs[] = $q->value;
             }
         }
 
         $call = $this->builderFactory->methodCall(
-            $m,
+            $collaborator,
             $subjectCall->name->name,
-            $this->builderFactory->args($subjectArgs)
+            $this->builderFactory->args(array_filter($subjectArgs))
         );
 
         $stub = $this->builderFactory->methodCall(
             $call,
             $expectation->name->name,
-            $this->builderFactory->args($stubArgs)
+            $this->builderFactory->args(array_filter($stubArgs))
         );
 
         return [$stub];
     }
 
+    /**
+     * Writes `$collaborator->reveal()`.
+     */
     private function buildRevealCallOnCollaborator(Node\Expr\Variable $var): Node\Expr\MethodCall
     {
         return $this->builderFactory->methodCall(
             $this->builderFactory->var($var->name),
+            'reveal'
+        );
+    }
+
+    /**
+     * Writes `$this->collaborator->reveal()`.
+     */
+    private function buildRevealCallOnGlobalCollaborator(Node\Expr\Variable $var): Node\Expr\MethodCall
+    {
+        return $this->builderFactory->methodCall(
+            $this->builderFactory->propertyFetch(
+                $this->builderFactory->var('this'),
+                $var->name
+            ),
             'reveal'
         );
     }

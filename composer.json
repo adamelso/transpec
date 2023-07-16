@@ -22,14 +22,16 @@
     "require-dev": {
         "roave/security-advisories": "dev-latest",
         "symfony/maker-bundle": "^1.43",
-        "symfony/phpunit-bridge": "^6.3"
+        "symfony/phpunit-bridge": "^6.3",
+        "sylius/addressing": "^1.0"
     },
     "config": {
         "allow-plugins": {
             "composer/package-versions-deprecated": true,
             "php-http/discovery": true,
             "symfony/flex": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "symfony/thanks": true
         },
         "bin-dir": "bin",
         "optimize-autoloader": true,
